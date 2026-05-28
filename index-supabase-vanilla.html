@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>មង្គលការឌីជីថល (Digital RSVP & Guest Manager)</title>
+  
+  <!-- Kantumruy Pro & Hanuman Fonts from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:ital,wght@0,300..700;1,300..700&family=Hanuman:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Supabase Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- SheetJS CDN (for exporting to Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Kantumruy Pro"', 'Inter', 'sans-serif'],
+            serif: ['Hanuman', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            primary: {
+              50: '#fdf2f8',
+              100: '#fce7f3',
+              200: '#fbcfe8',
+              500: '#ec4899',
+              600: '#db2777',
+              700: '#be185d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: "Kantumruy Pro", "Inter", sans-serif;
+      background-color: #faf9f6;
+      color: #1e293b;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Status bar checking connection mode -->
+  <div class="bg-slate-900 text-white text-xs py-2 px-4 shadow-inner flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <i data-lucide="award" class="w-4.5 h-4.5 text-pink-400"></i>
+      <span class="font-extrabold tracking-widest uppercase text-[10px]">Wedding Guest RSVP Ecosystem (Vanilla)</span>
+    </div>
+
+    <div>
+      <div id="connection-status-badge" class="flex items-center gap-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 px-20 py-0.5 rounded-full text-[10px] font-extrabold">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+        កំពុងផ្ទៀងផ្ទាត់ការតភ្ជាប់...
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Section with Navigation -->
+  <header class="bg-white border-b border-rose-50 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('guest')">
+        <div class="w-10 h-10 bg-gradient-to-tr from-pink-500 to-rose-400 rounded-full flex items-center justify-center text-white shadow-sm">
+          <i data-lucide="heart" class="w-5.5 h-5.5 fill-white/10 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-serif font-black text-rose-800 tracking-tight leading-none">
+            មង្គលការឌីជីថល (Digital RSVP)
+          </h1>
+          <span class="text-[10px] text-slate-400 tracking-wider font-bold block mt-0.5">VANILLA JS SUPABASE STANDALONE ENGINE</span>
+        </div>
+      </div>
+
+      <!-- Nav Tabs -->
+      <nav class="flex items-center bg-slate-100 p-1 rounded-xl">
+        <button onclick="switchTab('guest')" id="tab-btn-guest" class="flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all bg-white text-pink-600 shadow-sm">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          RSVP ចុះឈ្មោះភ្ញៀវ
+        </button>
+        <button onclick="switchTab('admin')" id="tab-btn-admin" class="flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+          <i data-lucide="shield" class="w-4 h-4"></i>
+          គណៈចាត់តាំង (Admin)
+        </button>
+        <button onclick="switchTab('host')" id="tab-btn-host" class="flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+          <i data-lucide="heart" class="w-4 h-4"></i>
+          ម្ចាស់ដើមការ (Host)
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Work area -->
+  <main class="flex-grow py-8 max-w-6xl w-full mx-auto px-4">
+
+    <!-- 1. GUEST VIEW -->
+    <section id="view-guest" class="space-y-6">
+      
+      <!-- Wedding selector for public guest RSVP -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-pink-50/50 flex flex-col md:flex-row items-center justify-between gap-4">
+        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+          <i data-lucide="heart" class="w-4 h-4 text-pink-500 fill-pink-500"></i>
+          សូមជ្រើសរើសកម្មវិធីមង្គលការ៖
+        </label>
+        <select id="guest-wedding-select" onchange="onGuestWeddingChange()" class="w-full md:w-72 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-pink-500 focus:border-pink-500 p-2.5 outline-none font-medium text-center">
+          <option value="">-- កំពុងអានកម្មវិធីមង្គលការ --</option>
+        </select>
+      </div>
+
+      <!-- Wedding Header Card -->
+      <div class="bg-gradient-to-r from-pink-500 to-rose-400 p-8 rounded-3xl text-white text-center shadow-lg relative overflow-hidden">
+        <i data-lucide="heart" class="w-12 h-12 text-white/90 fill-white/20 mx-auto mb-3 animate-bounce"></i>
+        <h1 id="guest-wedding-title" class="text-2xl md:text-3xl font-serif font-bold tracking-wide leading-relaxed">
+          សូមជ្រើសរើសកម្មវិធីមង្គលការខាងលើ
+        </h1>
+        <p class="text-pink-100 text-sm mt-2 font-light">
+          សូមស្វាគមន៍ជម្រើសដ៏វិសេសវិសាល! សូមចុះឈ្មោះចូលរួមបង្កើនភាពអធិកអធម និងអបអរសាទរ
+        </p>
+      </div>
+
+      <!-- RSVP SUCCESS CARD -->
+      <div id="rsvp-success-card" class="hidden bg-white border-2 border-emerald-500 p-6 rounded-2xl text-center shadow-lg">
+        <i data-lucide="check-circle-2" class="w-16 h-16 text-emerald-500 mx-auto mb-3"></i>
+        <h3 class="text-xl font-bold text-slate-800 mb-2">ការចុះឈ្មោះទទួលបានជោគជ័យ!</h3>
+        <p class="text-slate-600 text-sm leading-relaxed mb-4">
+          ព័ត៌មានរបស់អ្នកត្រូវបានកត់ត្រាទុកក្នុងប្រព័ន្ធរួចរាល់ហើយ។
+          <br>
+          <span class="font-semibold text-pink-600">សូមរង់ចាំការអនុម័ត និងទទួលស្វាគមន៍ពីក្រុមការងារសម្របសម្រួល។</span>
+        </p>
+        <button onclick="resetRsvpForm()" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold transition">
+          ចុះឈ្មោះភ្ញៀវផ្សេងទៀត
+        </button>
+      </div>
+
+      <!-- RSVP Submission Form -->
+      <form id="rsvp-form" onsubmit="submitRsvp(event)" class="bg-white border border-pink-100 rounded-3xl shadow-xl p-8 space-y-6">
+        <h2 class="text-xl font-bold font-serif text-slate-800 border-b border-rose-50 pb-3 flex items-center gap-2">
+          <i data-lucide="users" class="w-5 h-5 text-pink-500"></i>
+          ទម្រង់ចុះឈ្មោះ និងពិនិត្យចំណងដៃ
+        </h2>
+
+        <div id="rsvp-error-alert" class="hidden bg-rose-50 border border-rose-200 p-4 rounded-xl flex items-center gap-2 text-rose-700 text-sm">
+          <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
+          <span id="rsvp-error-text"> error message </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Name field -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="user" class="w-4 h-4 text-slate-400"></i>
+              ឈ្មោះរបស់លោកអ្នក <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="guest-input-name" required placeholder="ឧ. លឹម ហួរ" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-3 outline-none text-sm font-medium" />
+          </div>
+
+          <!-- Phone field -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="phone" class="w-4 h-4 text-slate-400"></i>
+              លេខទូរស័ព្ទ <span class="text-rose-500">*</span>
+            </label>
+            <input type="tel" id="guest-input-phone" required placeholder="ឧ. 012 345 678" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-3 outline-none text-sm font-medium" />
+          </div>
+
+          <!-- Companions selection -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
+              ចំនួនអ្នកមកជាមួយ
+            </label>
+            <select id="guest-input-companions" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-3 outline-none text-sm font-medium">
+              <option value="0">+0 នាក់</option>
+              <option value="1">+1 នាក់</option>
+              <option value="2">+2 នាក់</option>
+              <option value="3">+3 នាក់</option>
+              <option value="4">+4 នាក់</option>
+              <option value="5">+5 នាក់</option>
+              <option value="6">+6 នាក់</option>
+              <option value="7">+7 នាក់</option>
+              <option value="8">+8 នាក់</option>
+              <option value="9">+9 នាក់</option>
+              <option value="10">+10 នាក់</option>
+            </select>
+          </div>
+
+          <!-- Relation Type Toggle -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="heart" class="w-4 h-4 text-slate-400"></i>
+              ប្រភេទទំនាក់ទំនង
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="setGuestRelation('ខាងកូនកំលោះ')" id="btn-rel-g1" class="btn-relation py-2 px-3 text-xs font-semibold rounded-xl border transition bg-gradient-to-r from-pink-500 to-rose-400 text-white border-pink-500 shadow-sm">ខាងកូនកំលោះ</button>
+              <button type="button" onclick="setGuestRelation('ខាងកូនក្រមុំ')" id="btn-rel-g2" class="btn-relation py-2 px-3 text-xs font-semibold rounded-xl border transition bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">ខាងកូនក្រមុំ</button>
+              <button type="button" onclick="setGuestRelation('មិត្តភក្តិ')" id="btn-rel-g3" class="btn-relation py-2 px-3 text-xs font-semibold rounded-xl border transition bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">មិត្តភក្តិ</button>
+              <button type="button" onclick="setGuestRelation('ផ្សេងៗ')" id="btn-rel-g4" class="btn-relation py-2 px-3 text-xs font-semibold rounded-xl border transition bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">ផ្សេងៗ</button>
+            </div>
+            <input type="hidden" id="guest-input-relation" value="ខាងកូនកំលោះ">
+          </div>
+
+          <!-- Gift Amount in USD & KHQR display -->
+          <div class="md:col-span-2 bg-pink-50/40 p-4 rounded-2xl border border-pink-100/50">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="w-full">
+                <label class="block text-sm font-bold text-pink-900 mb-1.5 flex items-center gap-1.5">
+                  <i data-lucide="gift" class="w-4.5 h-4.5 text-pink-500"></i>
+                  ចំនួនប្រាក់ចងដៃ (ប្រាក់ដុល្លារ USD)
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 font-bold">$</span>
+                  <input type="number" id="guest-input-amount" placeholder="ឧ. 50" min="0" class="w-full bg-white border border-pink-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 pl-8 p-3 outline-none text-base font-bold" />
+                </div>
+                <p class="text-[11px] text-rose-500 mt-1 font-light leading-snug">
+                  *ចំពោះការផ្ទេរតាម KHQR រួចរាល់ សូមវាយបញ្ចូលចំនួនទឹកប្រាក់ដែលបានផ្ទេរ។
+                </p>
+              </div>
+
+              <!-- Bakong/ABA KHQR -->
+              <div id="guest-khqr-block" class="flex flex-col items-center bg-white p-3 rounded-2xl border border-pink-100 shadow-sm w-full md:w-auto">
+                <span class="text-[9px] font-extrabold text-pink-600 tracking-wide uppercase mb-1">ស្កែនដើម្បីផ្ទេរប្រាក់ចងដៃ</span>
+                <img id="guest-khqr-img" src="https://api-qr.bakong.org.kh/images/khqr_mock.png" alt="Bakong KHQR" class="w-32 h-32 object-contain rounded-lg border bg-slate-50">
+                <span class="text-[8px] text-slate-400 mt-1">KHQR / Bakong / ABA</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Messages in Khmer  -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="message-square" class="w-4 h-4 text-slate-400"></i>
+              សារជូនពរ ឬកំណត់សម្គាល់ (សរសេរភាសាខ្មែរ)
+            </label>
+            <textarea id="guest-input-note" rows="3" placeholder="ឧ. សូមជូនពរជ័យមង្គល និងសុភមង្គលក្នុងគ្រួសារថ្មី!" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-3 outline-none text-sm font-medium"></textarea>
+          </div>
+        </div>
+
+        <!-- Submission Button -->
+        <button type="submit" id="rsvp-submit-btn" class="w-full py-4 text-base font-bold text-white bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-700 hover:to-rose-600 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2">
+          <i data-lucide="heart" class="w-5 h-5 fill-white text-white"></i>
+          <span>ចុះឈ្មោះឥឡូវនេះ (RSVP)</span>
+        </button>
+      </form>
+    </section>
+
+
+    <!-- 2. ADMIN VIEW -->
+    <section id="view-admin" class="hidden space-y-8">
+      
+      <!-- Admin Login Portal -->
+      <div id="admin-login-card" class="max-w-md mx-auto bg-white border border-rose-100 rounded-3xl shadow-xl p-8">
+        <div class="text-center mb-6">
+          <div class="w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-400 rounded-2xl flex items-center justify-center mx-auto text-white shadow-md mb-3">
+            <i data-lucide="shield" class="w-8 h-8 text-white"></i>
+          </div>
+          <h2 class="text-xl font-serif font-bold text-slate-800">ផ្ទាំងគ្រប់គ្រងអ្នកសម្របសម្រួល (Admin)</h2>
+          <p class="text-xs text-slate-500 mt-1">សូមបញ្ចូលគណនីសម្ងាត់អ្នកគ្រប់គ្រងដើម្បីបន្ត</p>
+        </div>
+
+        <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+          <div id="admin-login-error" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-xl font-medium">
+            ឈ្មោះ ឬលេខសម្ងាត់មិនត្រឹមត្រូវ!
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">គណនី (Username)</label>
+            <input type="text" id="admin-input-user" required placeholder="admin123" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-500 focus:border-pink-500 p-3 text-sm outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">លេខសម្ងាត់ (Password)</label>
+            <input type="password" id="admin-input-pass" required placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-500 focus:border-pink-500 p-3 text-sm outline-none">
+          </div>
+
+          <button type="submit" class="w-full py-3.5 font-bold text-white bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-700 hover:to-rose-600 rounded-xl shadow-md transition cursor-pointer">
+            ចូលទៅកាន់ប្រព័ន្ធគ្រប់គ្រង
+          </button>
+        </form>
+
+        <div class="mt-6 border-t border-slate-100 pt-4 text-center">
+          <span class="text-xs text-slate-400 font-light">
+            គណនីសាកល្បង៖ <span class="font-semibold text-slate-600">admin123 / password123</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Real Admin Panel once logged-in -->
+      <div id="admin-panel" class="hidden space-y-8">
+        
+        <!-- Header area -->
+        <div class="bg-white p-5 rounded-2xl border border-pink-50 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-pink-600">
+              <i data-lucide="shield" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h1 class="text-lg font-serif font-bold text-slate-800">ផ្ទាំងបញ្ជាលម្អិតរបស់អ្នកសម្របសម្រួល</h1>
+              <p class="text-[9px] text-slate-400 font-medium">WEDDING LOGISTICS COORDINATOR ENVIRONMENT</p>
+            </div>
+          </div>
+
+          <button onclick="logoutAdmin()" class="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 hover:text-rose-600 transition">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            ចាកចេញ
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          <!-- Create Event Card -->
+          <div class="bg-white border border-pink-100 p-6 rounded-2xl shadow-sm space-y-4 h-fit">
+            <h2 class="text-base font-serif font-bold text-slate-800 border-b border-rose-50 pb-2 flex items-center gap-2">
+              <i data-lucide="plus-circle" class="w-5 h-5 text-pink-500"></i>
+              បង្កើតកម្មវិធីមង្គលការថ្មី
+            </h2>
+
+            <form onsubmit="handleCreateWedding(event)" class="space-y-4">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">ចំណងជើងកម្មវិធី *</label>
+                <input type="text" id="add-wedding-title" required placeholder="ឧ. ពិធីមង្គលការ សុភ័ក្ត្រ និង សុជាតា" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-2.5 text-xs outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">តំណភ្ជាប់រូបភាព KHQR (ImgBB)</label>
+                <input type="url" id="add-wedding-khqr" placeholder="https://i.ibb.co/..." class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-2.5 text-xs outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">គណនីម្ចាស់ដើមការ (Host Username) *</label>
+                <input type="text" id="add-wedding-host-user" required placeholder="សរសេរអក្សរឡាតាំង ឧ. socheata123" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-2.5 text-xs outline-none">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">លេខសម្ងាត់ម្ចាស់ដើមការ *</label>
+                <input type="text" id="add-wedding-host-pass" required placeholder="ឧ. password123" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-400 focus:border-pink-400 p-2.5 text-xs outline-none">
+              </div>
+
+              <button type="submit" class="w-full py-2.5 text-xs font-bold text-white bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-700 hover:to-rose-600 rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                បង្កើតកម្មវិធីមង្គលការ
+              </button>
+            </form>
+          </div>
+
+          <!-- Guest table and Admin Controller (right) -->
+          <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Wedding filter -->
+            <div class="bg-white p-6 border border-pink-100 rounded-2xl shadow-sm space-y-6">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="heart" class="w-5 h-5 text-pink-500 fill-pink-500"></i>
+                  <span class="font-serif font-bold text-slate-800">ជ្រើសរើសកម្មវិធីកំពុងគ្រប់គ្រង៖</span>
+                </div>
+                <select id="admin-wedding-select" onchange="onAdminWeddingChange()" class="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg focus:ring-pink-500 focus:border-pink-500 p-2 outline-none w-full sm:w-64">
+                </select>
+              </div>
+
+              <!-- Manual Guest Input Form -->
+              <form onsubmit="handleManualGuestAdd(event)" class="bg-rose-50/30 border border-pink-100 p-4 rounded-xl space-y-4">
+                <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <i data-lucide="user-plus" class="w-4.5 h-4.5 text-pink-500"></i>
+                  កត់ត្រា និងបន្ថែមឈ្មោះភ្ញៀវដោយផ្ទាល់ (គណៈចាត់តាំង)
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input type="text" id="manual-input-name" required placeholder="ឈ្មោះភ្ញៀវ" class="bg-white border border-slate-200 text-slate-800 rounded-lg p-2 text-xs outline-none">
+                  <input type="text" id="manual-input-phone" required placeholder="លេខទូរស័ព្ទ" class="bg-white border border-slate-200 text-slate-800 rounded-lg p-2 text-xs outline-none">
+                  <select id="manual-input-companions" class="bg-white border border-slate-200 text-slate-800 rounded-lg p-2 text-xs outline-none">
+                    <option value="0">អត់មានអ្នកមកជាមួយ</option>
+                    <option value="1">មកជាមួយ +1 នាក់</option>
+                    <option value="2">មកជាមួយ +2 នាក់</option>
+                    <option value="3">មកជាមួយ +3 នាក់</option>
+                    <option value="4">មកជាមួយ +4 នាក់</option>
+                    <option value="5">មកជាមួយ +5 នាក់</option>
+                    <option value="6">មកជាមួយ +6 នាក់</option>
+                    <option value="7">មកជាមួយ +7 នាក់</option>
+                    <option value="8">មកជាមួយ +8 នាក់</option>
+                    <option value="9">មកជាមួយ +9 នាក់</option>
+                    <option value="10">មកជាមួយ +10 នាក់</option>
+                  </select>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <select id="manual-input-relation" class="bg-white border border-slate-200 text-slate-800 rounded-lg p-2 text-xs outline-none">
+                    <option value="ខាងកូនកំលោះ">ខាងកូនកំលោះ</option>
+                    <option value="ខាងកូនក្រមុំ">ខាងកូនក្រមុំ</option>
+                    <option value="មិត្តភក្តិ">មិត្តភក្តិ</option>
+                    <option value="ផ្សេងៗ">ផ្សេងៗ</option>
+                  </select>
+                  <input type="number" id="manual-input-amount" placeholder="ប្រាក់ចងដៃ (USD)" class="bg-white border border-slate-200 text-slate-800 rounded-lg p-2 text-xs outline-none font-bold text-pink-600">
+                  <input type="text" id="manual-input-note" placeholder="កំណត់សម្គាល់/ពាក្យជូនពរ" class="bg-white border border-slate-200 text-slate-800 rounded-lg p-2 text-xs outline-none">
+                </div>
+
+                <button type="submit" class="w-full sm:w-auto px-5 py-2 text-xs font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-lg transition shadow-sm">
+                  ចុះឈ្មោះភ្ញៀវនេះភ្លាម
+                </button>
+              </form>
+            </div>
+
+            <!-- Guests spreadsheet-like view with search/approvals -->
+            <div class="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+              <div class="p-4 bg-slate-50 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span class="font-serif font-bold text-xs text-slate-700">បញ្ជីឈ្មោះភ្ញៀវទាំងអស់ (<span id="admin-guest-count">0</span> នាក់)</span>
+                
+                <div class="relative w-full sm:w-64">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i data-lucide="search" class="h-3.5 w-3.5 text-slate-400"></i>
+                  </span>
+                  <input type="text" id="admin-search-input" oninput="renderAdminGuestsTable()" placeholder="រកតាមឈ្មោះ ឬលេខទូរស័ព្ទ..." class="w-full bg-white border border-slate-200 text-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs outline-none focus:ring-pink-400 focus:border-pink-400">
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50/50 text-slate-500 font-bold text-[10px] uppercase tracking-wider border-b border-slate-100">
+                      <th class="p-4">ឈ្មោះភ្ញៀវ</th>
+                      <th class="p-4">លេខទូរស័ព្ទ</th>
+                      <th class="p-4 text-center">អ្នកមកជាមួយ</th>
+                      <th class="p-4">ទំនាក់ទំនង</th>
+                      <th class="p-4 text-right">ប្រាក់ចងដៃ</th>
+                      <th class="p-4">ស្ថានភាព</th>
+                      <th class="p-4 text-center">សកម្មភាព</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-guests-table-body" class="divide-y divide-slate-100 text-xs text-slate-700">
+                    <!-- Dynamic Rows Insertion -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. HOST VIEW -->
+    <section id="view-host" class="hidden space-y-8">
+      
+      <!-- Host (Pair) Login Form -->
+      <div id="host-login-card" class="max-w-md mx-auto bg-white border border-pink-100 rounded-3xl shadow-xl p-8">
+        <div class="text-center mb-6">
+          <div class="w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-400 rounded-2xl flex items-center justify-center mx-auto text-white shadow-md mb-3">
+            <i data-lucide="heart" class="w-8 h-8 fill-pink-100 text-white"></i>
+          </div>
+          <h2 class="text-xl font-serif font-bold text-slate-800">ចលនទិន្នន័យម្ចាស់ដើមការ (Host View)</h2>
+          <p class="text-xs text-slate-500 mt-1 font-light">សូមបញ្ចូលគណនីប្រើប្រាស់ដែលផ្ដល់ដោយគណៈចាត់តាំង</p>
+        </div>
+
+        <form onsubmit="handleHostLogin(event)" class="space-y-4">
+          <div id="host-login-error" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-xl font-medium">
+            គណនី ឬលេខសម្ងាត់សម្រាប់គូស្នេហ៍មិនត្រឹមត្រូវ!
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">គណនីម្ចាស់ដើមការ (Host Username)</label>
+            <input type="text" id="host-input-user" required placeholder="socheata123" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-500 focus:border-pink-500 p-3 text-sm outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">លេខសម្ងាត់ (Password)</label>
+            <input type="password" id="host-input-pass" required placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-pink-500 focus:border-pink-500 p-3 text-sm outline-none">
+          </div>
+
+          <button type="submit" class="w-full py-3.5 font-bold text-white bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-700 hover:to-rose-600 rounded-xl shadow-md transition cursor-pointer">
+            ពិនិត្យមើលរបាយការណ៍មង្គលការ
+          </button>
+        </form>
+
+        <div class="mt-6 border-t border-slate-100 pt-4 text-center">
+          <span class="text-xs text-slate-400 font-light block">
+            គណនីសាកល្បង៖ <span class="font-semibold text-slate-600">socheata123 / password123</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Real Host Dashboard Panel -->
+      <div id="host-panel" class="hidden space-y-8">
+        
+        <!-- Welcome Board -->
+        <div class="bg-gradient-to-r from-pink-600 to-rose-500 p-6 rounded-3xl text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 text-white">
+              <i data-lucide="heart" class="w-8 h-8 fill-pink-50 text-white"></i>
+            </div>
+            <div>
+              <h1 id="host-wedding-title-label" class="text-xl md:text-2xl font-serif font-bold tracking-wide">
+                ពិធីមង្គលការ
+              </h1>
+              <p class="text-pink-100 text-xs mt-1 font-light">
+                សូមស្វាគមន៍មកកាន់ប្រព័ន្ធរបាយការណ៍ផ្សាយផ្ទាល់! ទិន្នន័យត្រូវបានកម្រិតត្រឹមការអាន និងពិនិត្រផ្ទាល់តែក៏អាចទាញយកបាន។
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="exportExcelWithSheetJS()" class="flex items-center gap-1.5 px-4.5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow transition">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              ទាញយកបញ្ជី Excel (SheetJS)
+            </button>
+
+            <button onclick="logoutHost()" class="flex items-center gap-1 px-3.5 py-2.5 border border-white/30 hover:bg-white/10 text-white text-xs font-bold rounded-xl transition">
+              <i data-lucide="log-out" class="w-4 h-4 text-white"></i>
+              ចាកចេញ
+            </button>
+          </div>
+        </div>
+
+        <!-- Statistical Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <div class="bg-white border border-pink-100 p-6 rounded-3xl shadow-sm relative overflow-hidden flex items-center gap-4">
+            <div class="p-4 bg-indigo-50 rounded-2xl text-indigo-600">
+              <i data-lucide="users" class="w-8 h-8"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase block">ភ្ញៀវចុះឈ្មោះសរុប (RSVP Count)</span>
+              <span id="host-total-registered" class="text-3xl font-bold text-slate-800 tracking-tight block mt-1">0 នាក់</span>
+              <span id="host-total-pending" class="text-[10px] font-semibold text-amber-500 block">(0 នាក់កំពុងរង់ចាំការផ្ទៀងផ្ទាត់)</span>
+            </div>
+          </div>
+
+          <div class="bg-white border border-pink-100 p-6 rounded-3xl shadow-sm relative overflow-hidden flex items-center gap-4">
+            <div class="p-4 bg-pink-50 rounded-2xl text-pink-600">
+              <i data-lucide="heart" class="w-8 h-8 fill-pink-100 text-pink-600"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase block">អ្នកមកចូលរួមពិតប្រាកដ (Actual Attendees)</span>
+              <span id="host-total-attendees" class="text-3xl font-bold text-slate-800 tracking-tight block mt-1">0 នាក់</span>
+              <span class="text-[10px] text-slate-400 font-light block font-sans">គិតត្រឹមភ្ញៀវដែលបានអនុម័ត + ភរិយា/ស្វាមី/កូន</span>
+            </div>
+          </div>
+
+          <div class="bg-white border border-pink-100 p-6 rounded-3xl shadow-sm relative overflow-hidden flex items-center gap-4">
+            <div class="p-4 bg-emerald-50 rounded-2xl text-emerald-600">
+              <i data-lucide="gift" class="w-8 h-8"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase block">ថវិកាចងដៃសរុប (Total Gift Amount)</span>
+              <span id="host-total-gifts" class="text-3xl font-extrabold text-emerald-600 tracking-tight block mt-1">$0.00</span>
+              <span class="text-[10px] text-slate-400 font-light block font-sans">គិតតែពីភ្ញៀវដែលបានអនុម័តរួច</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Scrollable Guest logs filter -->
+        <div class="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
+          <div class="p-5 bg-slate-50/50 border-b border-rose-50 flex flex-col md:flex-row items-center justify-between gap-4">
+            <h2 class="text-sm font-serif font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="notebook" class="w-5 h-5 text-pink-500"></i>
+              របាយការណ៍ និងការត្រួតពិនិត្យកំណត់ត្រាភ្ញៀវ (<span id="host-filtered-guests-count">0</span> រកឃើញ)
+            </h2>
+
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <!-- Search box -->
+              <div class="relative w-full sm:w-56">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i data-lucide="search" class="h-3.5 w-3.5 text-slate-400"></i>
+                </span>
+                <input type="text" id="host-search-input" oninput="renderHostGuestsTable()" placeholder="ស្វែងរកតាមឈ្មោះ ឬលេខទូរស័ព្ទ..." class="w-full bg-white border border-slate-200 text-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs outline-none focus:ring-pink-400 focus:border-pink-400">
+              </div>
+
+              <!-- Filter Selector -->
+              <select id="host-relation-filter" onchange="renderHostGuestsTable()" class="bg-white border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 outline-none w-full sm:w-36 font-semibold">
+                <option value="ទាំងអស់">ទំនាក់ទំនងទាំងអស់</option>
+                <option value="ខាងកូនកំលោះ">ខាងកូនកំលោះ</option>
+                <option value="ខាងកូនក្រមុំ">ខាងកូនក្រមុំ</option>
+                <option value="មិត្តភក្តិ">មិត្តភក្តិ</option>
+                <option value="ផ្សេងៗ">ផ្សេងៗ</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left order-collapse">
+              <thead>
+                <tr class="bg-slate-50/50 text-slate-500 font-bold text-[10px] uppercase tracking-wider border-b border-rose-50/50">
+                  <th class="p-4 pl-6">ល.រ</th>
+                  <th class="p-4">ឈ្មោះភ្ញៀវ</th>
+                  <th class="p-4">លេខទូរស័ព្ទ</th>
+                  <th class="p-4 text-center">អ្នករួមដំណើរ</th>
+                  <th class="p-4">ប្រភេទទំនាក់ទំនង</th>
+                  <th class="p-4 text-right">ប្រាក់ចងដៃ</th>
+                  <th class="p-4">ស្ថានភាព</th>
+                  <th class="p-4 pr-6">ពាក្យជូនពរ/សារ</th>
+                </tr>
+              </thead>
+              <tbody id="host-guests-table-body" class="divide-y divide-slate-100 text-xs text-slate-700">
+                <!-- Host View Only Rows populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Disclaimer alert -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/50 flex items-start gap-2.5 text-xs text-slate-500">
+          <i data-lucide="shield-alert" class="w-4.5 h-4.5 text-slate-400 flex-shrink-0 mt-0.5"></i>
+          <p class="leading-relaxed">
+            <strong>សេចក្តីបញ្ជាក់លម្អិត៖</strong> លោកអ្នកស្ថិតនៅក្នុងគណនីម្ចាស់ដើមការ (Host View) ដែលមានសិទ្ធត្រឹមតែពិនិត្យ ស្វែងរក ផ្ទៀងផ្ទាត់ និងទាញយកទិន្នន័យ (Export to Excel) តែប៉ុណ្ណោះ។ ដើម្បីកែសម្រួល ឬលុបទិន្នន័យភ្ញៀវណាមួយ សូមទាក់ទងមកខាងគណៈចាត់តាំង ឬក្រុមសម្របសម្រួលបច្ចេកទេស។
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="bg-white border-t border-slate-100 py-6 mt-12 text-center text-slate-400 text-xs mt-auto">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© 2026 មង្គលការឌីជីថល (Digital RSVP & Guest Manager). Standalone App.</p>
+      <div class="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400">
+        <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+        ប្រព័ន្ធគ្រប់គ្រងឆ្លាតវៃជាមួយ SUPABASE & VANILLA JS
+      </div>
+    </div>
+  </footer>
+
+  <!-- STANDALONE JS CONTROLLER & INTEGRATION -->
+  <script>
+    // 1. SUPABASE credentials - look for environment or placeholders
+    const SUPABASE_URL = window.env?.SUPABASE_URL || '';
+    const SUPABASE_ANON_KEY = window.env?.SUPABASE_ANON_KEY || '';
+
+    let supabase = null;
+    let isRealSupabase = false;
+
+    // 2. Mock and Local Databases Fallbacks for immediate offline double-click preview!
+    const _defaultAdmins = [
+      { id: 'a-1', username: 'admin123', password: 'password123' }
+    ];
+    const _defaultWeddings = [
+      {
+        id: '88888888-8888-4888-baaa-888888888888',
+        title: 'ពិធីមង្គលការ សុភ័ក្ត្រ និង សុជាតា',
+        host_username: 'socheata123',
+        host_password: 'password123',
+        khqr_img_url: 'https://api-qr.bakong.org.kh/images/khqr_mock.png'
+      },
+      {
+        id: '99999999-9999-4999-bbbb-999999999999',
+        title: 'ពិធីមង្គលការ ណារិទ្ធ និង ទេវី',
+        host_username: 'tevy123',
+        host_password: 'password123',
+        khqr_img_url: 'https://api-qr.bakong.org.kh/images/khqr_mock.png'
+      }
+    ];
+    const _defaultGuests = [
+      { id: 'g-1', wedding_id: '88888888-8888-4888-baaa-888888888888', name: 'លោក ចាន់ ណារិទ្ធ', phone: '012345678', companions: 2, relation_type: 'ខាងកូនកំលោះ', amount: 50, note: 'សូមជូនពរឱ្យអ្នកទាំងពីរកាន់ដៃគ្នាជារៀងរហូត!', status: 'approved' },
+      { id: 'g-2', wedding_id: '88888888-8888-4888-baaa-888888888888', name: 'អ្នកស្រី សុខ ម៉ារី', phone: '098765432', companions: 1, relation_type: 'ខាងកូនក្រមុំ', amount: 100, note: 'ជោគជ័យ និងសុភមង្គល!', status: 'approved' },
+      { id: 'g-3', wedding_id: '88888888-8888-4888-baaa-888888888888', name: 'លោក លី សុជាតិ', phone: '088123456', companions: 0, relation_type: 'មិត្តភក្តិ', amount: 0, note: 'សុំទោសដែលមិនបានទៅផ្ទាល់ តែសូមជូនពរពីចម្ងាយ!', status: 'pending' }
+    ];
+
+    // Seed local cache if empty
+    if (!localStorage.getItem('wedding_admins_local')) localStorage.setItem('wedding_admins_local', JSON.stringify(_defaultAdmins));
+    if (!localStorage.getItem('wedding_events_local')) localStorage.setItem('wedding_events_local', JSON.stringify(_defaultWeddings));
+    if (!localStorage.getItem('wedding_guests_local')) localStorage.setItem('wedding_guests_local', JSON.stringify(_defaultGuests));
+
+    // Dynamic state
+    let activeTab = 'guest';
+    let weddingsList = [];
+    let activeWedding = null;
+    let currentAdminWeddingId = '';
+    let currentHostWedding = null;
+    let selectedGuestRelationType = 'ខាងកូនកំលោះ';
+
+    // APP INIT
+    document.addEventListener("DOMContentLoaded", async () => {
+      initSupabase();
+      await fetchWeddings();
+      switchTab('guest');
+      lucide.createIcons();
+    });
+
+    function initSupabase() {
+      const badge = document.getElementById('connection-status-badge');
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          isRealSupabase = true;
+          badge.className = "flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold";
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>សមាហរណកម្មជាមួយ SUPABASE៖ បានភ្ជាប់`;
+        } catch (err) {
+          console.error("Failed to connect Supabase: ", err);
+          setupLocalMode(badge);
+        }
+      } else {
+        setupLocalMode(badge);
+      }
+    }
+
+    function setupLocalMode(badge) {
+      isRealSupabase = false;
+      badge.className = "flex items-center gap-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold";
+      badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>ម៉ូដសាកល្បង៖ LOCAL CACHE (ដំណើរការភ្លាមៗ)`;
+    }
+
+    // 3. DATABASE CALLS
+    async function fetchWeddings() {
+      if (isRealSupabase && supabase) {
+        const { data, error } = await supabase.from('weddings').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          weddingsList = data;
+        } else {
+          weddingsList = JSON.parse(localStorage.getItem('wedding_events_local') || '[]');
+        }
+      } else {
+        weddingsList = JSON.parse(localStorage.getItem('wedding_events_local') || '[]');
+      }
+      populateWeddingSelectors();
+    }
+
+    function populateWeddingSelectors() {
+      const selectG = document.getElementById('guest-wedding-select');
+      const selectA = document.getElementById('admin-wedding-select');
+
+      selectG.innerHTML = '';
+      selectA.innerHTML = '';
+
+      if (weddingsList.length === 0) {
+        selectG.innerHTML = '<option value="">-- គ្មានកម្មវិធីមង្គលការ --</option>';
+        selectA.innerHTML = '<option value="">-- គ្មានកម្មវិធីមង្គលការ --</option>';
+        return;
+      }
+
+      weddingsList.forEach(w => {
+        const optG = document.createElement('option');
+        optG.value = w.id;
+        optG.textContent = w.title;
+        selectG.appendChild(optG);
+
+        const optA = document.createElement('option');
+        optA.value = w.id;
+        optA.textContent = w.title;
+        selectA.appendChild(optA);
+      });
+
+      // Select first
+      selectG.value = weddingsList[0].id;
+      selectA.value = weddingsList[0].id;
+
+      currentAdminWeddingId = weddingsList[0].id;
+      onGuestWeddingChange();
+    }
+
+    // 4. ROUTER VIEW COMMUTATION
+    function switchTab(tab) {
+      activeTab = tab;
+      
+      // Hide all section panels
+      document.getElementById('view-guest').classList.add('hidden');
+      document.getElementById('view-admin').classList.add('hidden');
+      document.getElementById('view-host').classList.add('hidden');
+
+      // Unselect tabs styles
+      document.getElementById('tab-btn-guest').className = "flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+      document.getElementById('tab-btn-admin').className = "flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+      document.getElementById('tab-btn-host').className = "flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+
+      // Mark selected tab style and show view
+      if (tab === 'guest') {
+        document.getElementById('view-guest').classList.remove('hidden');
+        document.getElementById('tab-btn-guest').className = "flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all bg-white text-pink-600 shadow-sm";
+      } else if (tab === 'admin') {
+        document.getElementById('view-admin').classList.remove('hidden');
+        document.getElementById('tab-btn-admin').className = "flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all bg-white text-pink-600 shadow-sm";
+      } else if (tab === 'host') {
+        document.getElementById('view-host').classList.remove('hidden');
+        document.getElementById('tab-btn-host').className = "flex items-center gap-1.5 px-4.5 py-2 text-xs font-bold rounded-lg transition-all bg-white text-pink-600 shadow-sm";
+      }
+      lucide.createIcons();
+    }
+
+    // 5. PUBLIC GUEST CONTROLLERS
+    function onGuestWeddingChange() {
+      const selectG = document.getElementById('guest-wedding-select');
+      const wid = selectG.value;
+      activeWedding = weddingsList.find(w => w.id === wid) || null;
+
+      const titleLabel = document.getElementById('guest-wedding-title');
+      const khqrImg = document.getElementById('guest-khqr-img');
+
+      if (activeWedding) {
+        titleLabel.textContent = activeWedding.title;
+        khqrImg.src = activeWedding.khqr_img_url || 'https://api-qr.bakong.org.kh/images/khqr_mock.png';
+      } else {
+        titleLabel.textContent = "មិនទាន់មានកម្មវិធីមង្គលការនៅឡើយ";
+        khqrImg.src = 'https://api-qr.bakong.org.kh/images/khqr_mock.png';
+      }
+    }
+
+    function setGuestRelation(rel) {
+      selectedGuestRelationType = rel;
+      document.getElementById('guest-input-relation').value = rel;
+
+      // Reset styles
+      const buttons = document.querySelectorAll('.btn-relation');
+      buttons.forEach(btn => {
+        btn.className = "btn-relation py-2 px-3 text-xs font-semibold rounded-xl border transition bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100";
+      });
+
+      // Highlight active relation
+      event.target.className = "btn-relation py-2 px-3 text-xs font-semibold rounded-xl border transition bg-gradient-to-r from-pink-500 to-rose-400 text-white border-pink-500 shadow-sm";
+    }
+
+    async function submitRsvp(e) {
+      e.preventDefault();
+      const errAlert = document.getElementById('rsvp-error-alert');
+      const errText = document.getElementById('rsvp-error-text');
+      errAlert.classList.add('hidden');
+
+      const selectG = document.getElementById('guest-wedding-select');
+      const weddingId = selectG.value;
+      const name = document.getElementById('guest-input-name').value.trim();
+      const phone = document.getElementById('guest-input-phone').value.trim();
+      const companions = parseInt(document.getElementById('guest-input-companions').value) || 0;
+      const amountStr = document.getElementById('guest-input-amount').value;
+      const amount = parseFloat(amountStr) || 0;
+      const note = document.getElementById('guest-input-note').value.trim();
+      const relation = document.getElementById('guest-input-relation').value;
+
+      if (!weddingId) {
+        showRsvpError('សូមជ្រើសរើសកម្មវិធីមង្គលការជាមុន!');
+        return;
+      }
+      if (!name) {
+        showRsvpError('សូមបញ្ចូលឈ្មោះរបស់អ្នក!');
+        return;
+      }
+      if (!phone) {
+        showRsvpError('សូមបញ្ចូលលេខទូរស័ព្ទរបស់លោកអ្នក!');
+        return;
+      }
+
+      const rsvpLoader = document.getElementById('rsvp-submit-btn');
+      rsvpLoader.disabled = true;
+      rsvpLoader.innerText = 'កំពុងរក្សាទុកទិន្នន័យ...';
+
+      const payload = {
+        wedding_id: weddingId,
+        name: name,
+        phone: phone,
+        companions: companions,
+        relation_type: relation,
+        amount: amount,
+        note: note,
+        status: 'pending'
+      };
+
+      try {
+        let inserted = null;
+        if (isRealSupabase && supabase) {
+          const { data, error } = await supabase.from('guests').insert([payload]).select().single();
+          if (!error) inserted = data;
+        } else {
+          const localGuests = JSON.parse(localStorage.getItem('wedding_guests_local') || '[]');
+          const newG = { ...payload, id: 'g-' + Date.now(), created_at: new Date().toISOString() };
+          localGuests.unshift(newG);
+          localStorage.setItem('wedding_guests_local', JSON.stringify(localGuests));
+          inserted = newG;
+        }
+
+        if (inserted) {
+          document.getElementById('rsvp-form').classList.add('hidden');
+          document.getElementById('rsvp-success-card').classList.remove('hidden');
+        } else {
+          showRsvpError('ការចុះឈ្មោះមិនជោគជ័យ សូមផ្ទៀងផ្ទាត់ការតភ្ជាប់ម្តងទៀត។');
+        }
+      } catch (err) {
+        showRsvpError('មានកំហុសប្រព័ន្ធក្នុងការរក្សាទុកកត់ត្រា!');
+      } finally {
+        rsvpLoader.disabled = false;
+        rsvpLoader.innerHTML = `<i data-lucide="heart" class="w-5 h-5 fill-white text-white"></i> ចុះឈ្មោះឥឡូវនេះ (RSVP)`;
+        lucide.createIcons();
+      }
+    }
+
+    function showRsvpError(msg) {
+      const errAlert = document.getElementById('rsvp-error-alert');
+      const errText = document.getElementById('rsvp-error-text');
+      errText.textContent = msg;
+      errAlert.classList.remove('hidden');
+    }
+
+    function resetRsvpForm() {
+      document.getElementById('guest-input-name').value = '';
+      document.getElementById('guest-input-phone').value = '';
+      document.getElementById('guest-input-companions').value = '0';
+      document.getElementById('guest-input-amount').value = '';
+      document.getElementById('guest-input-note').value = '';
+      document.getElementById('rsvp-form').classList.remove('hidden');
+      document.getElementById('rsvp-success-card').classList.add('hidden');
+    }
+
+    // 6. ADMIN PORTAL MANAGEMENT
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('admin-input-user').value.trim();
+      const pass = document.getElementById('admin-input-pass').value.trim();
+      const errBox = document.getElementById('admin-login-error');
+      errBox.classList.add('hidden');
+
+      let success = false;
+      if (isRealSupabase && supabase) {
+        const { data, error } = await supabase.from('admins').select('*').eq('username', user).eq('password', pass).maybeSingle();
+        if (!error && data) success = true;
+      } else {
+        const localAdmins = JSON.parse(localStorage.getItem('wedding_admins_local') || '[]');
+        const found = localAdmins.find(a => a.username === user && a.password === pass);
+        if (found) success = true;
+      }
+
+      if (success) {
+        document.getElementById('admin-login-card').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+        onAdminWeddingChange();
+      } else {
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function logoutAdmin() {
+      document.getElementById('admin-login-card').classList.remove('hidden');
+      document.getElementById('admin-panel').classList.add('hidden');
+      document.getElementById('admin-input-user').value = '';
+      document.getElementById('admin-input-pass').value = '';
+    }
+
+    async function handleCreateWedding(e) {
+      e.preventDefault();
+      const title = document.getElementById('add-wedding-title').value.trim();
+      let khqr = document.getElementById('add-wedding-khqr').value.trim();
+      const hostUser = document.getElementById('add-wedding-host-user').value.trim();
+      const hostPass = document.getElementById('add-wedding-host-pass').value.trim();
+
+      if (!title || !hostUser || !hostPass) {
+        alert('សូមបញ្ចូលព័ត៌មានដែលត្រូវការ!');
+        return;
+      }
+      if (!khqr) khqr = 'https://api-qr.bakong.org.kh/images/khqr_mock.png';
+
+      const payload = {
+        title: title,
+        khqr_img_url: khqr,
+        host_username: hostUser,
+        host_password: hostPass
+      };
+
+      try {
+        let inserted = null;
+        if (isRealSupabase && supabase) {
+          const { data, error } = await supabase.from('weddings').insert([payload]).select().single();
+          if (!error) inserted = data;
+        } else {
+          const localEvents = JSON.parse(localStorage.getItem('wedding_events_local') || '[]');
+          const newE = { ...payload, id: 'w-' + Date.now(), created_at: new Date().toISOString() };
+          localEvents.unshift(newE);
+          localStorage.setItem('wedding_events_local', JSON.stringify(localEvents));
+          inserted = newE;
+        }
+
+        if (inserted) {
+          alert('បង្កើតកម្មវិធីមង្គលការដោយជោគជ័យ!');
+          document.getElementById('add-wedding-title').value = '';
+          document.getElementById('add-wedding-khqr').value = '';
+          document.getElementById('add-wedding-host-user').value = '';
+          document.getElementById('add-wedding-host-pass').value = '';
+          await fetchWeddings();
+        } else {
+          alert('មិនអាចរក្សាទុកកម្មវិធីបានឡើយ។ ឈ្មោះម្ចាស់ផ្ទះប្រហែលមានរួចហើយ!');
+        }
+      } catch (err) {
+        alert('កំហុសប្រព័ន្ធក្នុងការបង្កើតកម្មវិធីមង្គលការ!');
+      }
+    }
+
+    function onAdminWeddingChange() {
+      currentAdminWeddingId = document.getElementById('admin-wedding-select').value;
+      renderAdminGuestsTable();
+    }
+
+    async function getGuestsForWedding(wid) {
+      if (isRealSupabase && supabase) {
+        const { data, error } = await supabase.from('guests').select('*').eq('wedding_id', wid).order('created_at', { ascending: false });
+        if (!error && data) return data;
+        return [];
+      } else {
+        const localGuests = JSON.parse(localStorage.getItem('wedding_guests_local') || '[]');
+        return localGuests.filter(g => g.wedding_id === wid);
+      }
+    }
+
+    async function handleManualGuestAdd(e) {
+      e.preventDefault();
+      const name = document.getElementById('manual-input-name').value.trim();
+      const phone = document.getElementById('manual-input-phone').value.trim();
+      const companions = parseInt(document.getElementById('manual-input-companions').value) || 0;
+      const relation = document.getElementById('manual-input-relation').value;
+      const amountVal = document.getElementById('manual-input-amount').value;
+      const amount = parseFloat(amountVal) || 0;
+      const note = document.getElementById('manual-input-note').value.trim();
+
+      if (!currentAdminWeddingId) {
+        alert('សូមជ្រើសរើសកម្មវិធីកំពុងគ្រប់គ្រងជាមុន!');
+        return;
+      }
+      if (!name || !phone) {
+        alert('សូមបញ្ចូលព័ត៌មានភ្ញៀវពេញលេញ!');
+        return;
+      }
+
+      const payload = {
+        wedding_id: currentAdminWeddingId,
+        name: name,
+        phone: phone,
+        companions: companions,
+        relation_type: relation,
+        amount: amount,
+        note: note,
+        status: 'approved' // Automatically approved since it is entered by coordinator
+      };
+
+      try {
+        let inserted = null;
+        if (isRealSupabase && supabase) {
+          const { data, error } = await supabase.from('guests').insert([payload]).select().single();
+          if (!error) inserted = data;
+        } else {
+          const localGuests = JSON.parse(localStorage.getItem('wedding_guests_local') || '[]');
+          const newG = { ...payload, id: 'g-' + Date.now(), created_at: new Date().toISOString() };
+          localGuests.unshift(newG);
+          localStorage.setItem('wedding_guests_local', JSON.stringify(localGuests));
+          inserted = newG;
+        }
+
+        if (inserted) {
+          document.getElementById('manual-input-name').value = '';
+          document.getElementById('manual-input-phone').value = '';
+          document.getElementById('manual-input-companions').value = '0';
+          document.getElementById('manual-input-amount').value = '';
+          document.getElementById('manual-input-note').value = '';
+          renderAdminGuestsTable();
+          alert('បានចុះឈ្មោះសម្រាប់ភ្ញៀវដោយជោគជ័យ!');
+        } else {
+          alert('មិនអាចបន្ថែមភ្ញៀវបានទេ។');
+        }
+      } catch (err) {
+        alert('កំហុសប្រព័ន្ធក្នុងការបន្ថែមភ្ញៀវ!');
+      }
+    }
+
+    async function renderAdminGuestsTable() {
+      const tbody = document.getElementById('admin-guests-table-body');
+      tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">កំពុងអានទិន្នន័យ...</td></tr>';
+
+      const list = await getGuestsForWedding(currentAdminWeddingId);
+      const search = document.getElementById('admin-search-input').value.toLowerCase().trim();
+
+      const filtered = list.filter(g => {
+        return g.name.toLowerCase().includes(search) || g.phone.includes(search);
+      });
+
+      document.getElementById('admin-guest-count').textContent = filtered.length;
+
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 font-light">មិនឃើញភ្ញៀវណាម្នាក់ចុះឈ្មោះឡើយ</td></tr>';
+        return;
+      }
+
+      filtered.forEach(g => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-pink-50/20 text-slate-700 border-b border-slate-100";
+        
+        const noteCell = g.note ? `<span class="text-[10px] text-slate-400 italic block mt-0.5 line-clamp-1">${g.note}</span>` : '';
+        const badgeClass = g.relation_type === 'ខាងកូនកំលោះ' ? 'bg-indigo-50 text-indigo-700' :
+                           g.relation_type === 'ខាងកូនក្រមុំ' ? 'bg-pink-50 text-pink-700' :
+                           g.relation_type === 'មិត្តភក្តិ' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700';
+
+        const statusDisplay = g.status === 'approved' ? 
+          `<span class="text-emerald-600 font-extrabold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>បានអនុម័ត</span>` : 
+          `<span class="text-amber-500 font-extrabold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>កំពុងផ្ទៀងផ្ទាត់</span>`;
+
+        const approveBtn = g.status === 'pending' ? 
+          `<button onclick="approveGuestByAdmin('${g.id}')" class="p-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 shadow-sm"><i data-lucide="check" class="w-3.5 h-3.5"></i></button>` : '';
+
+        tr.innerHTML = `
+          <td class="p-4"><span class="font-bold block text-slate-900">${g.name}</span>${noteCell}</td>
+          <td class="p-4 font-mono font-medium">${g.phone}</td>
+          <td class="p-4 text-center font-bold">+${g.companions} នាក់</td>
+          <td class="p-4"><span class="px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${badgeClass}">${g.relation_type}</span></td>
+          <td class="p-4 text-right font-bold text-emerald-600">$${g.amount.toFixed(2)}</td>
+          <td class="p-4">${statusDisplay}</td>
+          <td class="p-4 text-center">
+            <div class="flex items-center justify-center gap-1.5">
+              ${approveBtn}
+              <button onclick="deleteGuestByAdmin('${g.id}')" class="p-1.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 shadow-sm"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    async function approveGuestByAdmin(gid) {
+      try {
+        if (isRealSupabase && supabase) {
+          await supabase.from('guests').update({ status: 'approved' }).eq('id', gid);
+        } else {
+          const localGuests = JSON.parse(localStorage.getItem('wedding_guests_local') || '[]');
+          const idx = localGuests.findIndex(g => g.id === gid);
+          if (idx !== -1) {
+            localGuests[idx].status = 'approved';
+            localStorage.setItem('wedding_guests_local', JSON.stringify(localGuests));
+          }
+        }
+        renderAdminGuestsTable();
+      } catch (err) {
+        alert('មិនអាចអនុម័តបានទេ។');
+      }
+    }
+
+    async function deleteGuestByAdmin(gid) {
+      if (confirm('តើអ្នកចង់លុបទិន្នន័យភ្ញៀវនេះមែនទេ?')) {
+        try {
+          if (isRealSupabase && supabase) {
+            await supabase.from('guests').delete().eq('id', gid);
+          } else {
+            const localGuests = JSON.parse(localStorage.getItem('wedding_guests_local') || '[]');
+            const filtered = localGuests.filter(g => g.id !== gid);
+            localStorage.setItem('wedding_guests_local', JSON.stringify(filtered));
+          }
+          renderAdminGuestsTable();
+        } catch (err) {
+          alert('មិនអាចលុបទិន្នន័យបានទេ។');
+        }
+      }
+    }
+
+
+    // 7. BRIDE & GROOM HOST CONTROL
+    async function handleHostLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('host-input-user').value.trim();
+      const pass = document.getElementById('host-input-pass').value.trim();
+      const errBox = document.getElementById('host-login-error');
+      errBox.classList.add('hidden');
+
+      let foundWedding = null;
+      if (isRealSupabase && supabase) {
+        const { data, error } = await supabase.from('weddings').select('*').eq('host_username', user).eq('host_password', pass).maybeSingle();
+        if (!error && data) foundWedding = data;
+      } else {
+        const localEvents = JSON.parse(localStorage.getItem('wedding_events_local') || '[]');
+        foundWedding = localEvents.find(w => w.host_username === user && w.host_password === pass);
+      }
+
+      if (foundWedding) {
+        currentHostWedding = foundWedding;
+        document.getElementById('host-login-card').classList.add('hidden');
+        document.getElementById('host-panel').classList.remove('hidden');
+        
+        document.getElementById('host-wedding-title-label').textContent = foundWedding.title;
+        renderHostGuestsTable();
+      } else {
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function logoutHost() {
+      document.getElementById('host-login-card').classList.remove('hidden');
+      document.getElementById('host-panel').classList.add('hidden');
+      currentHostWedding = null;
+      document.getElementById('host-input-user').value = '';
+      document.getElementById('host-input-pass').value = '';
+    }
+
+    async function renderHostGuestsTable() {
+      if (!currentHostWedding) return;
+
+      const list = await getGuestsForWedding(currentHostWedding.id);
+      
+      // Calculate Stats
+      const totalRegNum = list.length;
+      const approvedList = list.filter(g => g.status === 'approved');
+      const pendingList = list.filter(g => g.status === 'pending');
+      
+      const companionsSum = approvedList.reduce((acc, current) => acc + current.companions, 0);
+      const actualAttendeesCount = approvedList.length + companionsSum;
+
+      const totalGiftSum = approvedList.reduce((acc, current) => acc + current.amount, 0);
+
+      // Render stats elements
+      document.getElementById('host-total-registered').textContent = `${totalRegNum} នាក់`;
+      document.getElementById('host-total-pending').textContent = `(${pendingList.length} នាក់កំពុងរង់ចាំការផ្ទៀងផ្ទាត់)`;
+      document.getElementById('host-total-attendees').textContent = `${actualAttendeesCount} នាក់`;
+      document.getElementById('host-total-gifts').textContent = `$${totalGiftSum.toFixed(2)}`;
+
+      // Filter and render table
+      const search = document.getElementById('host-search-input').value.trim().toLowerCase();
+      const filterRel = document.getElementById('host-relation-filter').value;
+
+      const filtered = list.filter(g => {
+        const matchesSearch = g.name.toLowerCase().includes(search) || g.phone.includes(search);
+        const matchesRelation = filterRel === 'ទាំងអស់' || g.relation_type === filterRel;
+        return matchesSearch && matchesRelation;
+      });
+
+      document.getElementById('host-filtered-guests-count').textContent = filtered.length;
+
+      const tbody = document.getElementById('host-guests-table-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-light">មិនមានទិន្នន័យភ្ញៀវឡើយ។</td></tr>';
+        return;
+      }
+
+      filtered.forEach((g, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-pink-50/10 border-b border-slate-100";
+        
+        const badgeClass = g.relation_type === 'ខាងកូនកំលោះ' ? 'bg-indigo-50 text-indigo-700' :
+                           g.relation_type === 'ខាងកូនក្រមុំ' ? 'bg-pink-50 text-pink-700' :
+                           g.relation_type === 'មិត្តភក្តិ' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700';
+
+        const statusDisplay = g.status === 'approved' ? 
+          `<span class="text-emerald-600 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>បានអនុម័ត</span>` : 
+          `<span class="text-amber-500 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>រង់ចាំផ្ទៀងផ្ទាត់</span>`;
+
+        tr.innerHTML = `
+          <td class="p-4 pl-6 font-mono font-bold text-slate-400">${idx + 1}</td>
+          <td class="p-4 font-bold text-slate-900">${g.name}</td>
+          <td class="p-4 font-mono font-medium">${g.phone}</td>
+          <td class="p-4 text-center font-semibold">+${g.companions} នាក់</td>
+          <td class="p-4"><span class="px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${badgeClass}">${g.relation_type}</span></td>
+          <td class="p-4 text-right font-extrabold text-emerald-600">$${g.amount.toFixed(2)}</td>
+          <td class="p-4">${statusDisplay}</td>
+          <td class="p-4 pr-6 max-w-xs text-slate-500 italic truncate" title="${g.note || ''}">${g.note || '---'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function exportExcelWithSheetJS() {
+      if (!currentHostWedding) return;
+
+      const list = await getGuestsForWedding(currentHostWedding.id);
+      if (list.length === 0) {
+        alert('មិនមានទិន្នន័យដើម្បីទាញយកឡើយ!');
+        return;
+      }
+
+      const formatted = list.map((g, idx) => ({
+        'ល.រ': idx + 1,
+        'ឈ្មោះភ្ញៀវ': g.name,
+        'លេខទូរស័ព្ទ': g.phone,
+        'ចំនួនអ្នករួមដំណើរ': g.companions,
+        'សរុបអ្នកចូលរួម': g.status === 'approved' ? g.companions + 1 : 0,
+        'ប្រភេទទំនាក់ទំនង': g.relation_type,
+        'ទឹកប្រាក់ចងដៃ ($)': g.amount,
+        'ស្ថានភាពទិន្នន័យ': g.status === 'approved' ? 'បានអនុម័ត' : 'រង់ចាំផ្ទៀងផ្ទាត់',
+        'ពាក្យជូនពរ/សារ': g.note || ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(formatted);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'ភ្ញៀវមង្គលការ');
+      
+      const fileName = currentHostWedding.title.replace(/\s+/g, '_') + '_GuestList.xlsx';
+      XLSX.writeFile(workbook, fileName);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "Wedding Guest Manager",
+  "description": "ប្រព័ន្ធគ្រប់គ្រង និងចុះឈ្មោះភ្ញៀវចូលរួមពិធីមង្គលការ សមាហរណកម្មជាមួយ Supabase",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
